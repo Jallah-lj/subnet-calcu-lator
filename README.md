@@ -25,17 +25,19 @@ A modern, high-performance IP subnet calculator built with **Next.js**. This too
 
 Bash
 npm install
+
 Run the development server:
 
 Bash
 npm run dev
+
 Open your browser:
 Navigate to http://localhost:3000 to view the application.
 
-Author
+#Author
 Jallah Lawuobah L.
 
-Networking Student at Kigali Independent University
+#Networking Student at Kigali Independent University
 
 License
 This project is licensed under the MIT License - see the LICENSE file for details.
