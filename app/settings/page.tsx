@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "@/components/ThemeContext";
 
@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const { isDarkMode, toggleTheme } = useTheme();
   const [defaultMask, setDefaultMask] = useState("24");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historySource, setHistorySource] = useState<"local" | "server">("local");
   const [profile, setProfile] = useState<Profile>({ name: "", email: "", emailVerifiedAt: null });
   const [profileMessage, setProfileMessage] = useState("");
   const [profileError, setProfileError] = useState("");
@@ -37,6 +38,7 @@ export default function SettingsPage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const appliedServerTheme = useRef(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -79,10 +81,83 @@ export default function SettingsPage() {
     void loadProfile();
   }, [session?.user?.email, session?.user?.id, session?.user?.name]);
 
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const loadSettings = async () => {
+      const response = await fetch("/api/user/settings");
+      if (!response.ok) return;
+
+      const payload = (await response.json()) as { settings?: { defaultCidr: number; theme: string } };
+      if (!payload.settings) return;
+
+      const cidr = String(payload.settings.defaultCidr);
+      setDefaultMask(cidr);
+      localStorage.setItem("defaultMask", cidr);
+
+      if (!appliedServerTheme.current) {
+        appliedServerTheme.current = true;
+        if (payload.settings.theme === "dark" && !isDarkMode) toggleTheme();
+        if (payload.settings.theme === "light" && isDarkMode) toggleTheme();
+      }
+    };
+
+    void loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setHistorySource("local");
+      return;
+    }
+
+    const loadServerHistory = async () => {
+      const response = await fetch("/api/user/history");
+      if (!response.ok) return;
+
+      const payload = (await response.json()) as {
+        history?: { ip: string; cidr: number; network: string; broadcast: string; mask: string; usableHosts: string; createdAt: string }[];
+      };
+      if (!payload.history) return;
+
+      setHistory(
+        payload.history.map((entry) => ({
+          ip: entry.ip,
+          cidr: entry.cidr,
+          network: entry.network,
+          broadcast: entry.broadcast,
+          mask: entry.mask,
+          usableHosts: entry.usableHosts,
+          timestamp: entry.createdAt
+        }))
+      );
+      setHistorySource("server");
+    };
+
+    void loadServerHistory();
+  }, [session?.user?.id]);
+
+  const saveSettings = (settings: { defaultCidr?: number; theme?: "light" | "dark" }) => {
+    if (!session?.user?.id) return;
+    void fetch("/api/user/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings)
+    });
+  };
+
   const handleMaskChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     setDefaultMask(val);
     localStorage.setItem("defaultMask", val);
+    saveSettings({ defaultCidr: Number(val) });
+  };
+
+  const handleThemeToggle = () => {
+    appliedServerTheme.current = true;
+    saveSettings({ theme: isDarkMode ? "light" : "dark" });
+    toggleTheme();
   };
 
   const clearHistory = () => {
@@ -289,7 +364,7 @@ export default function SettingsPage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">Toggle between light and dark mode</p>
               </div>
               <button
-                onClick={toggleTheme}
+                onClick={handleThemeToggle}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ${
                   isDarkMode ? "bg-blue-600" : "bg-gray-200"
                 }`}
@@ -324,14 +399,17 @@ export default function SettingsPage() {
           </div>
 
           <div className="p-6">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex justify-between items-center mb-1">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Recent Calculations</h2>
-              {history.length > 0 && (
+              {historySource === "local" && history.length > 0 && (
                 <button onClick={clearHistory} className="text-sm text-red-500 hover:text-red-700">
                   Clear All
                 </button>
               )}
             </div>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">
+              {historySource === "server" ? "Synced with your account." : "Stored on this device only."}
+            </p>
 
             {history.length === 0 ? (
               <p className="text-sm text-gray-500">No recent calculations found.</p>

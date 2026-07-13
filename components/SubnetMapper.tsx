@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { generateSubnets } from "@/utils/subnetCalculator";
+import { downloadCsv, rowsToCsv } from "@/utils/csv";
 
 export default function SubnetMapper({ baseIp, baseCidr }: { baseIp: string; baseCidr: number }) {
   const [targetCidr, setTargetCidr] = useState(baseCidr + 1 > 32 ? 32 : baseCidr + 1);
@@ -17,6 +18,18 @@ export default function SubnetMapper({ baseIp, baseCidr }: { baseIp: string; bas
   if (baseCidr >= 32) {
     return <div className="text-gray-500 text-sm p-4">Cannot map subnets for a /32 address.</div>;
   }
+
+  const exportCsv = () => {
+    if (!mappedData || Array.isArray(mappedData)) return;
+    const rows = mappedData.subnets.map((sub) => ({
+      "#": sub.index,
+      Network: sub.network,
+      "Usable Range": sub.range,
+      Broadcast: sub.broadcast,
+      Hosts: sub.hosts
+    }));
+    downloadCsv("subnet-split.csv", rowsToCsv(rows));
+  };
 
   return (
     <div className="space-y-6">
@@ -40,9 +53,17 @@ export default function SubnetMapper({ baseIp, baseCidr }: { baseIp: string; bas
             <span className="font-semibold text-gray-800 dark:text-gray-200">
               Generated {mappedData.total.toLocaleString()} Subnets
             </span>
-            {mappedData.total > 256 && (
-              <span className="text-amber-600 dark:text-amber-400">Showing first 256</span>
-            )}
+            <div className="flex items-center gap-3">
+              {mappedData.total > 256 && (
+                <span className="text-amber-600 dark:text-amber-400">Showing first 256</span>
+              )}
+              <button
+                onClick={exportCsv}
+                className="text-xs px-3 py-1.5 rounded-md bg-gray-600 hover:bg-gray-700 text-white transition-colors"
+              >
+                Export CSV
+              </button>
+            </div>
           </div>
 
           <div className="max-h-96 overflow-y-auto border border-gray-200 dark:border-gray-800 rounded-lg">

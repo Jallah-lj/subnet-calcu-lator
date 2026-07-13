@@ -2,3 +2,8 @@ node_modules/
 .next/
 .env
 .env.local
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/users.json
+tsconfig.tsbuildinfo

@@ -81,7 +81,7 @@ export default function LoginPage() {
             {isLoading ? "Signing In..." : "Sign In"}
           </button>
         </form>
-        <p className="mt-4 text-xs text-center text-gray-500 dark:text-gray-400">Try: admin@example.com / password123</p>
+        
         <p className="mt-2 text-sm text-center text-gray-500 dark:text-gray-400">
           <Link href="/forgot-password" className="text-blue-600 dark:text-blue-400 hover:underline">
             Forgot password?

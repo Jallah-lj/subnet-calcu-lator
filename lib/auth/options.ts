@@ -7,6 +7,7 @@ import {
   recordLoginFailure,
   verifyPassword
 } from "@/lib/auth/users";
+import { AUTH_SECRET } from "@/lib/auth/secret";
 
 if (!process.env.NEXTAUTH_URL && process.env.NODE_ENV !== "production") {
   process.env.NEXTAUTH_URL = "http://localhost:3000";
@@ -76,5 +77,5 @@ export const authOptions: NextAuthOptions = {
       return session;
     }
   },
-  secret: process.env.NEXTAUTH_SECRET || "fallback-secret-key-for-development"
+  secret: AUTH_SECRET
 };
